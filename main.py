@@ -11,66 +11,79 @@ class Main():
     self.__alert = self.__Alert(self.__ref_alert, self.page.close_dialog, self.page)
     self.__table = self.__DataTable(self.__alert.edit_render)
     self.__appbar = self.__AppBar(self.__table,self.page)
-    self.__login = self.__Login(self, self.panel_info, self.user_info)
+    self.__login = self.__Login(self.panel_info, self.user_info)
     self.__dialog = ft.AlertDialog(ref=self.__ref_alert)
     self.__end_draver = self.__EndDrawer(self.__table.search, self.__table.search_int)
     self.render()
     
 
   def render(self):
-    self.page.fonts = {
-      'Robobo': 'https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&display=swap'
-    }
     self.page.title = 'Аптека "7 жизней"'
     self.page.adaptive = True
     self.page.scroll = True
     self.page.window_min_width = 1000
     self.page.window_min_height = 500
-    self.page.adaptive = True
-    self.__login.render()
-    self.page.window_center()
+    self.page.dialog =self.__login.render()
+    self.page.update()
+    self.__login.user_login.focus()
 
   def panel_info(self):
+    self.page.close_dialog()
     self.page.add(ft.Column([self.__table.render()], horizontal_alignment=ft.CrossAxisAlignment.STRETCH))
     self.page.dialog = self.__dialog
     self.page.appbar = self.__appbar.appbar
     self.page.floating_action_button = ft.FloatingActionButton(icon=ft.icons.ADD, on_click= lambda e: {self.__alert.add_render(self.__table.update)}, bgcolor='green')
     self.page.end_drawer = self.__end_draver.draver
     self.__table.update()
+    self.__end_draver.default()
+    self.page.update()
 
   def user_info(self):
+    self.page.close_dialog()
     self.__table.calback = self.__alert.user_alert
     self.page.add(ft.Column([self.__table.render()], horizontal_alignment=ft.CrossAxisAlignment.STRETCH))
     self.page.dialog = self.__dialog
     self.page.appbar = self.__appbar.appbar
     self.page.end_drawer = self.__end_draver.draver
-    self.__table.update()
     self.__end_draver.default()
+    self.__table.update()
+    self.page.update()
     
   class __Login():
-    def __init__(self, main, admin: Callable, user: Callable) -> None:
+    def __init__(self, admin: Callable, user: Callable) -> None:
       self.__admin = admin
       self.__user = user
-      self.__main = main
       self.user_login = ft.TextField(label='Логин', width=240)
-      self.__user_pass = ft.TextField(
-          label='Пароль', width=240, password=True, can_reveal_password=True,)
+      self.__user_pass = ft.TextField(label='Пароль', width=240, password=True, can_reveal_password=True,)
       self.__btn_verif = ft.TextButton('Вход', width=100, disabled=True)
 
     def __validate(self, e) -> None:
       if all([self.user_login.value, self.__user_pass.value]):
         self.__btn_verif.disabled = False
       else:
+        
         self.__btn_verif.disabled = True
       self.__btn_verif.update()
       
     def __verication(self, e): 
-      self.__main.page.close_dialog()
       if self.user_login.value.strip() == 'admin' and self.__user_pass.value.strip() == 'admin':
         self.__admin()
       else:
+        # if self.__user_login.value.strip() == '' or self.__user_login.value == None:
+        #   self.__user_login.error_text = 'Неверные данные'
+        #   self.__user_login.update()
+        #   return
+        # else:
+        #   self.__user_login.error_text = None
+        #   self.__user_login.update()
+        # if self.__user_pass.value.strip() == '' or self.__user_pass.value == None:
+        #   self.__user_pass.error_text = 'Неверные данные'
+        #   self.__user_pass.update()
+        #   return
+        # else:
+        #   self.__user_login.error_text = None
+        #   self.__user_pass.update()
         self.__user()
-      self.__main.page.update()
     
     def render(self):
       self.user_login.on_change = self.__validate
@@ -78,18 +91,12 @@ class Main():
       
       self.__user_pass.on_submit = self.__verication
       self.__btn_verif.on_click = self.__verication
-      
-      self.__main.page.dialog = ft.AlertDialog(True, ft.Text('Авторизация'),
+      self.user_login.on_submit = lambda e: self.__user_pass.focus()
+      return ft.AlertDialog(True,ft.Text('Авторизация'),
                                          ft.Column([self.user_login, self.__user_pass], height=150,
                                                    alignment=ft.MainAxisAlignment.CENTER), [self.__btn_verif],
                                          actions_alignment=ft.MainAxisAlignment.CENTER, open=True)
-      self.__main.page.update()
       
-      self.__main.page.snack_bar = ft.SnackBar(ft.Text(
-        'Неверные данные входа', color='red', text_align=ft.TextAlign.CENTER), bgcolor='white')
-      
-      self.user_login.on_submit = lambda e: self.__user_pass.focus()
-      self.user_login.focus()
       
   class __Alert():
     def __init__(self, ref: ft.Ref[ft.AlertDialog], close: Callable, page: ft.Page) -> None:
@@ -103,7 +110,6 @@ class Main():
         ft.TextField(label='Количество на складе',
                     input_filter=ft.NumbersOnlyInputFilter())
       ]
-      
       self.close = close
 
       
@@ -174,15 +180,58 @@ class Main():
       
     
     def user_alert(self,updata=None, id=None, dsd=None):
+      def valid():
+        if t.value == '1': minus.disabled = True
+        else: minus.disabled = False
+        minus.update()
+        sum.value = str(int(file_reading(file)[id]['Цена']) * int(t.value))
+        sum.update(); t.update()
+        
+      def add(e): 
+        t.value = str(int(t.value) + 1)
+        valid()
+      def remove(e): 
+        t.value = str(int(t.value) - 1)
+        sum.value = str(int(file_reading(file)[id]['Цена']) * int(t.value))
+        sum.update(); t.update()
+        valid()
+      
+      t = ft.TextField('1',disabled=True, label='Кол-во', width=60, height=40, text_align=ft.TextAlign.CENTER)
+      plus = ft.IconButton(ft.icons.ADD, on_click=add)
+      minus = ft.IconButton(ft.icons.REMOVE, disabled=True, on_click=remove )
+      sum = ft.Text(file_reading(file)[id]['Цена'],size=22,color='green')
+      name = ft.TextField(label='ФИО')
+      address = ft.TextField(label='Адрес доставки')
       self.__ref.current.title = ft.Text('Заказ товара')
-      self.__ref.current.content = ft.Row([
-        ft.Icon(ft.icons.QUESTION_ANSWER_OUTLINED),
-        ft.Text('Заказать товар?')
-      ])
+      self.__ref.current.content = ft.Column([
+        name,
+        ft.Row([
+          minus, t, plus
+        ], alignment=ft.MainAxisAlignment.CENTER),
+        ft.Row([
+          ft.Text('Цена: '),
+          sum,
+          ft.Text('р.')
+        ]),
+        address
+      ],tight=True)
       def ok(e):
-        self.close()
-        self.__page.snack_bar = ft.SnackBar(ft.Text('Товар был успешно заказан!!!'), True)
-        self.__page.update()
+        if all([name.value, address.value]):
+          self.close()
+          self.__page.snack_bar = ft.SnackBar(ft.Text('Товар был успешно заказан!!!'), True)
+          self.__page.update()
+        else:
+          if name.value == None or name.value == '':
+            name.error_text = 'Не введенно ФИО заказчика' 
+          else :
+            name.error_text = None
+          if address.value == None or address.value == '':
+            address.error_text = 'Не введенно адрес доставки товара' 
+          else:
+            address.error_text = None
+          name.update()
+          address.update()
+          
       self.__ref.current.actions=[
         ft.TextButton('Заказать', ft.icons.CHECK, style=ft.ButtonStyle('green'), on_click=ok),
         ft.TextButton('Отмена', ft.icons.CANCEL_SCHEDULE_SEND_OUTLINED, style=ft.ButtonStyle('red'), on_click=lambda e: self.close())
